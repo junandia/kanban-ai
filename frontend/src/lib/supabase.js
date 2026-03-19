@@ -66,17 +66,35 @@ export const api = {
     return data;
   },
 
-  async createCard(columnId, title, description = '', order = 0) {
+  async createCard(columnId, title, description = '', order = 0, priority = 'medium', assignee = null) {
     const { data, error } = await supabase
       .from('cards')
-      .insert([{ column_id: columnId, title, description, order }])
+      .insert([{ 
+        column_id: columnId, 
+        title, 
+        description, 
+        order,
+        priority,
+        assignee
+      }])
       .select()
       .single();
     if (error) throw error;
+    
+    // Log history
+    await this.addCardHistory(data.id, 'created', null, { title, priority, assignee });
+    
     return data;
   },
 
-  async updateCard(cardId, updates) {
+  async updateCard(cardId, updates, changedBy = null) {
+    // Get old values first
+    const { data: oldCard } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('id', cardId)
+      .single();
+    
     const { data, error } = await supabase
       .from('cards')
       .update(updates)
@@ -84,16 +102,67 @@ export const api = {
       .select()
       .single();
     if (error) throw error;
+    
+    // Log history for tracked fields
+    const trackedFields = ['title', 'description', 'priority', 'assignee', 'column_id'];
+    for (const field of trackedFields) {
+      if (updates[field] !== undefined && oldCard[field] !== updates[field]) {
+        await this.addCardHistory(
+          cardId, 
+          `${field}_changed`, 
+          { [field]: oldCard[field] }, 
+          { [field]: updates[field] },
+          changedBy
+        );
+      }
+    }
+    
     return data;
   },
 
-  async moveCard(cardId, columnId, order) {
-    return this.updateCard(cardId, { column_id: columnId, order });
+  async moveCard(cardId, columnId, order, changedBy = null) {
+    return this.updateCard(cardId, { column_id: columnId, order }, changedBy);
   },
 
   async deleteCard(cardId) {
+    // Log history before delete
+    await this.addCardHistory(cardId, 'deleted', null, null);
+    
     const { error } = await supabase.from('cards').delete().eq('id', cardId);
     if (error) throw error;
+  },
+
+  // Card History
+  async getCardHistory(cardId) {
+    const { data, error } = await supabase
+      .from('card_history')
+      .select('*')
+      .eq('card_id', cardId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return data;
+  },
+
+  async addCardHistory(cardId, action, oldValue, newValue, changedBy = null) {
+    try {
+      const { data, error } = await supabase
+        .from('card_history')
+        .insert([{
+          card_id: cardId,
+          action,
+          old_value: oldValue,
+          new_value: newValue,
+          changed_by: changedBy
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Failed to add card history:', error);
+      // Don't throw - history logging should not break main operations
+    }
   },
 
   // AI Tasks

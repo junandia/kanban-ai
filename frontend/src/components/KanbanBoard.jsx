@@ -205,6 +205,7 @@ export function KanbanBoard({ board }) {
               cards={getCardsByColumn(column.id)}
               onAddCard={handleAddCard}
               onCardClick={handleCardClick}
+              onCardHistory={handleCardClick}
             />
           ))}
         </SortableContext>

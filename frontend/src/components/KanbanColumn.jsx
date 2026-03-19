@@ -44,6 +44,7 @@ export function KanbanColumn({ column, cards, onAddCard, onCardClick }) {
               key={card.id} 
               card={card} 
               onClick={() => onCardClick(card, column)}
+              onHistory={onCardHistory}
             />
           ))}
         </SortableContext>
