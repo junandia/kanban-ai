@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export function CardModal({ card, onClose, onSave, onDelete }) {
+export function CardModal({ card, column, columns, onClose, onUpdate, onDelete, onExecuteAI, onHistory }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -9,6 +9,7 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
     due_date: '',
     labels: []
   });
+  const [aiPrompt, setAiPrompt] = useState('');
 
   useEffect(() => {
     if (card) {
@@ -27,7 +28,14 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...card, ...formData });
+    onUpdate(card.id, formData);
+  };
+
+  const handleExecuteAI = () => {
+    if (aiPrompt.trim() && onExecuteAI) {
+      onExecuteAI(aiPrompt);
+      setAiPrompt('');
+    }
   };
 
   const availableLabels = [
@@ -49,9 +57,9 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-content card-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Edit Card</h2>
+          <h2>✏️ Edit Card</h2>
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
 
@@ -90,6 +98,18 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
             </div>
 
             <div className="form-group">
+              <label>Column</label>
+              <select
+                value={column?.id || ''}
+                disabled
+              >
+                <option value={column?.id}>{column?.name || 'Unknown'}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
               <label>Assignee</label>
               <input
                 type="text"
@@ -98,15 +118,15 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
                 placeholder="Who's working on this?"
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label>Due Date</label>
-            <input
-              type="date"
-              value={formData.due_date}
-              onChange={e => setFormData({ ...formData, due_date: e.target.value })}
-            />
+            <div className="form-group">
+              <label>Due Date</label>
+              <input
+                type="date"
+                value={formData.due_date}
+                onChange={e => setFormData({ ...formData, due_date: e.target.value })}
+              />
+            </div>
           </div>
 
           <div className="form-group">
@@ -117,7 +137,11 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
                   key={label.name}
                   type="button"
                   className={`label-btn ${formData.labels.includes(label.name) ? 'selected' : ''}`}
-                  style={{ backgroundColor: formData.labels.includes(label.name) ? label.color : 'transparent', borderColor: label.color }}
+                  style={{ 
+                    backgroundColor: formData.labels.includes(label.name) ? label.color : 'transparent', 
+                    borderColor: label.color,
+                    color: formData.labels.includes(label.name) ? 'white' : label.color
+                  }}
                   onClick={() => toggleLabel(label.name)}
                 >
                   {label.name}
@@ -126,11 +150,36 @@ export function CardModal({ card, onClose, onSave, onDelete }) {
             </div>
           </div>
 
+          {onExecuteAI && (
+            <div className="form-group ai-section">
+              <label>🤖 AI Assistant</label>
+              <div className="ai-input-row">
+                <input
+                  type="text"
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  placeholder="Ask AI to help with this card..."
+                  onKeyPress={e => e.key === 'Enter' && e.preventDefault()}
+                />
+                <button type="button" className="btn-ai" onClick={handleExecuteAI}>
+                  Execute
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="modal-actions">
-            <button type="submit" className="btn-primary">Save</button>
+            <button type="submit" className="btn-primary">Save Changes</button>
+            {onHistory && (
+              <button type="button" className="btn-secondary" onClick={onHistory}>
+                📜 History
+              </button>
+            )}
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             {onDelete && (
-              <button type="button" className="btn-danger" onClick={() => onDelete(card.id)}>Delete</button>
+              <button type="button" className="btn-danger" onClick={() => onDelete(card.id)}>
+                🗑️ Delete
+              </button>
             )}
           </div>
         </form>

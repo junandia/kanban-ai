@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 
-export function HistoryModal({ cardId, onClose }) {
+export function HistoryModal({ card, onClose }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const cardId = card?.id;
 
   useEffect(() => {
     if (cardId) {
@@ -22,15 +24,16 @@ export function HistoryModal({ cardId, onClose }) {
         }
       );
       const data = await response.json();
-      setHistory(data);
+      setHistory(data || []);
     } catch (error) {
       console.error('Failed to fetch history:', error);
+      setHistory([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!cardId) return null;
+  if (!card) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -40,21 +43,33 @@ export function HistoryModal({ cardId, onClose }) {
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
 
+        <div className="card-info">
+          <strong>{card.title || 'Untitled Card'}</strong>
+        </div>
+
         <div className="history-content">
           {loading ? (
-            <p>Loading history...</p>
+            <div className="loading-state">
+              <p>Loading history...</p>
+            </div>
           ) : history.length === 0 ? (
-            <p className="no-history">No history found for this card.</p>
+            <div className="no-history">
+              <p>No history found for this card.</p>
+            </div>
           ) : (
             <ul className="history-list">
               {history.map((item, index) => (
                 <li key={item.id || index} className="history-item">
-                  <span className="history-time">
-                    {new Date(item.created_at).toLocaleString()}
-                  </span>
-                  <span className="history-action">{item.action}</span>
+                  <div className="history-header">
+                    <span className="history-time">
+                      {new Date(item.created_at).toLocaleString()}
+                    </span>
+                    <span className="history-action">{item.action || 'Updated'}</span>
+                  </div>
                   {item.changes && (
-                    <pre className="history-changes">{JSON.stringify(item.changes, null, 2)}</pre>
+                    <div className="history-changes">
+                      <pre>{JSON.stringify(item.changes, null, 2)}</pre>
+                    </div>
                   )}
                 </li>
               ))}
@@ -63,7 +78,7 @@ export function HistoryModal({ cardId, onClose }) {
         </div>
 
         <div className="modal-actions">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+          <button className="btn-primary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
