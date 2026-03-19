@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layout, Plus, Settings, Sparkles, Moon, Sun } from 'lucide-react';
+import { Layout, Plus, Settings, Sparkles, Moon, Sun, Archive } from 'lucide-react';
 import { api } from './lib/supabase';
 import { KanbanBoard } from './components/KanbanBoard';
 
@@ -9,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showNewBoard, setShowNewBoard] = useState(false);
   const [newBoardName, setNewBoardName] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'dark';
   });
@@ -108,6 +109,14 @@ function App() {
             <Plus size={16} /> New Board
           </button>
           
+          <button 
+            className={`btn ${showArchived ? 'btn-primary' : 'btn-secondary'}`} 
+            onClick={() => setShowArchived(!showArchived)}
+            title={showArchived ? 'Hide Archived' : 'Show Archived'}
+          >
+            <Archive size={16} /> {showArchived ? 'Hide Archived' : 'Show Archived'}
+          </button>
+          
           <button className="btn btn-ghost btn-icon">
             <Settings size={18} />
           </button>
@@ -120,7 +129,7 @@ function App() {
 
       {/* Board Content */}
       {currentBoard ? (
-        <KanbanBoard board={currentBoard} />
+        <KanbanBoard board={currentBoard} showArchived={showArchived} />
       ) : (
         <div className="empty-state" style={{ minHeight: 'calc(100vh - 80px)' }}>
           <Layout size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />

@@ -1,317 +1,210 @@
-import { useState } from 'react';
-import { Plus, X, Sparkles, Loader2, History } from 'lucide-react';
-import { api } from '../lib/supabase';
+import { useState, useEffect } from 'react';
+import { Comments } from './Comments';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 
-export function CardModal({ card, column, onClose, onUpdate, onDelete, onExecuteAI }) {
-  const [title, setTitle] = useState(card?.title || '');
-  const [description, setDescription] = useState(card?.description || '');
-  const [priority, setPriority] = useState(card?.priority || 'medium');
-  const [assignee, setAssignee] = useState(card?.assignee || '');
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+export function Modal({ card, onClose, onUpdate, onDelete, columns }) {
+  const [editedCard, setEditedCard] = useState(card);
+  const [selectedLabels, setSelectedLabels] = useState(card.labels || []);
+  
+  const availableLabels = [
+    { name: 'Bug', color: '#ef4444' },
+    { name: 'Feature', color: '#3b82f6' },
+    { name: 'Enhancement', color: '#8b5cf6' },
+    { name: 'Documentation', color: '#10b981' },
+    { name: 'Urgent', color: '#f97316' },
+  ];
+
+  const handleLabelToggle = (labelName) => {
+    setSelectedLabels(prev => 
+      prev.includes(labelName) 
+        ? prev.filter(l => l !== labelName)
+        : [...prev, labelName]
+    );
+  };
 
   const handleSave = () => {
-    if (title.trim()) {
-      onUpdate({ title, description, priority, assignee: assignee || null });
-    }
+    onUpdate({ ...editedCard, labels: selectedLabels });
   };
 
-  const handleAIExecute = async () => {
-    if (!aiPrompt.trim()) return;
-    setIsExecuting(true);
-    try {
-      await onExecuteAI(aiPrompt);
-      setAiPrompt('');
-    } finally {
-      setIsExecuting(false);
-    }
-  };
+  // Keyboard shortcut to close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
-  const loadHistory = async () => {
-    if (!card?.id) return;
-    setLoadingHistory(true);
-    try {
-      const data = await api.getCardHistory(card.id);
-      setHistory(data);
-    } catch (error) {
-      console.error('Error loading history:', error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const openHistory = () => {
-    setShowHistory(true);
-    loadHistory();
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: '450px' }}>
-        <div className="modal-header">
-          <div className="modal-title">
-            {card ? 'Edit Card' : 'New Card'}
-          </div>
-          <div style={{ display: 'flex', gap: '0.25rem' }}>
-            {card && (
-              <button className="btn btn-ghost btn-icon" onClick={openHistory} title="View History">
-                <History size={18} />
-              </button>
-            )}
-            <button className="btn btn-ghost btn-icon" onClick={onClose}>
-              <X size={18} />
-            </button>
-          </div>
-        </div>
-
-        <div className="modal-body">
-          <div className="form-group">
-            <label className="form-label">Title</label>
-            <input
-              type="text"
-              className="form-input"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Enter card title..."
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea
-              className="form-input form-textarea"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Add a description..."
-            />
-          </div>
-
-          {/* Priority Selector */}
-          <div className="form-group">
-            <label className="form-label">Priority</label>
-            <select 
-              className="form-input" 
-              value={priority}
-              onChange={e => setPriority(e.target.value)}
-              style={{ cursor: 'pointer' }}
-            >
-              <option value="low">🟤 Low</option>
-              <option value="medium">🔵 Medium</option>
-              <option value="high">🟠 High</option>
-              <option value="urgent">🔴 Urgent</option>
-            </select>
-          </div>
-
-          {/* Assignee Selector */}
-          <div className="form-group">
-            <label className="form-label">Assignee</label>
-            <select 
-              className="form-input" 
-              value={assignee}
-              onChange={e => setAssignee(e.target.value)}
-              style={{ cursor: 'pointer' }}
-            >
-              <option value="">Unassigned</option>
-              <option value="Mandor">👨‍💼 Mandor</option>
-              <option value="Tukang Ketik">⌨️ Tukang Ketik</option>
-              <option value="Ceker">🐔 Ceker</option>
-            </select>
-          </div>
-
-          {/* AI Execution Section */}
-          <div className="form-group">
-            <label className="form-label">
-              <Sparkles size={14} style={{ display: 'inline', marginRight: '4px' }} />
-              AI Task Prompt
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="text"
-                className="form-input"
-                value={aiPrompt}
-                onChange={e => setAiPrompt(e.target.value)}
-                placeholder="Enter task for AI to execute..."
-                style={{ flex: 1 }}
-              />
-              <button
-                className="btn btn-primary"
-                onClick={handleAIExecute}
-                disabled={!aiPrompt.trim() || isExecuting}
-              >
-                {isExecuting ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
-                Execute
-              </button>
-            </div>
-          </div>
-
-          {/* AI Tasks History */}
-          {card?.ai_tasks?.length > 0 && (
-            <div className="form-group">
-              <label className="form-label">AI Tasks</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {card.ai_tasks.map(task => (
-                  <div key={task.id} style={{
-                    padding: '0.5rem',
-                    background: 'var(--bg-card)',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <span className={`ai-badge ${task.status}`}>{task.status}</span>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
-                        {new Date(task.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <div style={{ color: 'var(--text-secondary)' }}>Prompt: {task.prompt}</div>
-                    {task.result && (
-                      <div style={{ marginTop: '0.25rem' }}>Result: {task.result}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-            <button className="btn btn-primary" onClick={handleSave} style={{ flex: 1 }}>
-              Save
-            </button>
-            {card && (
-              <button className="btn btn-secondary" onClick={() => onDelete()} style={{ color: '#ef4444' }}>
-                Delete
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* History Modal */}
-      {showHistory && (
-        <div className="modal-overlay" style={{ zIndex: 1001 }} onClick={() => setShowHistory(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: '500px', maxHeight: '80vh' }}>
-            <div className="modal-header">
-              <div className="modal-title">📋 Card History</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setShowHistory(false)}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              {loadingHistory ? (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                  <Loader2 size={24} className="spin" />
-                </div>
-              ) : history.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
-                  No history yet
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {history.map((entry, index) => (
-                    <div key={entry.id} style={{
-                      padding: '0.75rem',
-                      background: 'var(--bg-card)',
-                      borderRadius: '8px',
-                      borderLeft: '3px solid var(--primary)'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span style={{ 
-                          fontWeight: '600', 
-                          fontSize: '0.85rem',
-                          textTransform: 'capitalize',
-                          color: 'var(--primary)'
-                        }}>
-                          {entry.action}
-                        </span>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
-                          {new Date(entry.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        {entry.old_value && (
-                          <div style={{ marginBottom: '0.25rem' }}>
-                            <span style={{ fontWeight: '500' }}>From:</span>{' '}
-                            <code style={{ 
-                              background: 'var(--bg-secondary)', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontSize: '0.75rem'
-                            }}>
-                              {JSON.stringify(entry.old_value)}
-                            </code>
-                          </div>
-                        )}
-                        {entry.new_value && (
-                          <div>
-                            <span style={{ fontWeight: '500' }}>To:</span>{' '}
-                            <code style={{ 
-                              background: 'var(--bg-secondary)', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontSize: '0.75rem'
-                            }}>
-                              {JSON.stringify(entry.new_value)}
-                            </code>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {entry.changed_by && (
-                        <div style={{ marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                          by {entry.changed_by}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function AddColumnModal({ onAdd, onClose }) {
-  const [title, setTitle] = useState('');
-
-  const handleSubmit = () => {
-    if (title.trim()) {
-      onAdd(title);
-      onClose();
-    }
+  const isOverdue = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(date) < today;
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">Add Column</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <div className="modal-title">Edit Card</div>
+          <button className="modal-close" onClick={onClose}>✕</button>
         </div>
+        
         <div className="modal-body">
+          {/* Title */}
           <div className="form-group">
-            <label className="form-label">Column Title</label>
+            <label>Title</label>
             <input
               type="text"
-              className="form-input"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="e.g., To Do, In Progress, Done"
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              autoFocus
+              value={editedCard.title || ''}
+              onChange={e => setEditedCard({ ...editedCard, title: e.target.value })}
+              placeholder="Card title..."
             />
           </div>
-          <button className="btn btn-primary" onClick={handleSubmit} style={{ width: '100%' }}>
-            <Plus size={16} /> Add Column
-          </button>
+
+          {/* Description */}
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              value={editedCard.description || ''}
+              onChange={e => setEditedCard({ ...editedCard, description: e.target.value })}
+              placeholder="Add a description..."
+              rows="3"
+            />
+          </div>
+
+          {/* Due Date */}
+          <div className="form-group">
+            <label>Due Date</label>
+            <input
+              type="date"
+              value={editedCard.due_date || ''}
+              onChange={e => setEditedCard({ ...editedCard, due_date: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '6px',
+                border: `1px solid ${isOverdue(editedCard.due_date) ? '#ef4444' : 'var(--border-color)'}`,
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)'
+              }}
+            />
+            {isOverdue(editedCard.due_date) && (
+              <span style={{ 
+                color: '#ef4444', 
+                fontSize: '0.75rem',
+                marginTop: '0.25rem',
+                display: 'block'
+              }}>
+                ⚠️ This task is overdue
+              </span>
+            )}
+          </div>
+
+          {/* Priority */}
+          <div className="form-group">
+            <label>Priority</label>
+            <select
+              value={editedCard.priority || 'medium'}
+              onChange={e => setEditedCard({ ...editedCard, priority: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+
+          {/* Column */}
+          <div className="form-group">
+            <label>Column</label>
+            <select
+              value={editedCard.column_id || ''}
+              onChange={e => setEditedCard({ ...editedCard, column_id: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              {columns.map(col => (
+                <option key={col.id} value={col.id}>{col.title}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Labels/Tags */}
+          <div className="form-group">
+            <label>Labels</label>
+            <div className="labels-selector" style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginTop: '0.5rem'
+            }}>
+              {availableLabels.map(label => (
+                <button
+                  key={label.name}
+                  type="button"
+                  onClick={() => handleLabelToggle(label.name)}
+                  style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '9999px',
+                    border: '2px solid transparent',
+                    background: selectedLabels.includes(label.name) ? label.color : 'transparent',
+                    color: selectedLabels.includes(label.name) ? 'white' : label.color,
+                    borderColor: label.color,
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: '500',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {label.name}
+                </button>
+              ))}
+            </div>
+            {selectedLabels.length > 0 && (
+              <div style={{
+                marginTop: '0.5rem',
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)'
+              }}>
+                Selected: {selectedLabels.join(', ')}
+              </div>
+            )}
+          </div>
+
+          {/* Comments Section */}
+          <Comments cardId={card.id} />
+
+          {/* Actions */}
+          <div className="modal-actions">
+            <button className="btn btn-danger" onClick={() => onDelete(card.id)}>
+              🗑️ Delete
+            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleSave}>
+                💾 Save Changes
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

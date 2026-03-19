@@ -45,6 +45,7 @@ export function KanbanColumn({ column, cards, onAddCard, onCardClick, onCardHist
               card={card} 
               onClick={() => onCardClick(card, column)}
               onHistory={onCardHistory}
+              onArchive={onCardArchive}
             />
           ))}
         </SortableContext>

@@ -132,6 +132,32 @@ export const api = {
     if (error) throw error;
   },
 
+  async archiveCard(cardId, changedBy = null) {
+    const { data, error } = await supabase
+      .from('cards')
+      .update({ archived: true })
+      .eq('id', cardId)
+      .select()
+      .single();
+    if (error) throw error;
+    
+    await this.addCardHistory(cardId, 'archived', { archived: false }, { archived: true }, changedBy);
+    return data;
+  },
+
+  async unarchiveCard(cardId, changedBy = null) {
+    const { data, error } = await supabase
+      .from('cards')
+      .update({ archived: false })
+      .eq('id', cardId)
+      .select()
+      .single();
+    if (error) throw error;
+    
+    await this.addCardHistory(cardId, 'unarchived', { archived: true }, { archived: false }, changedBy);
+    return data;
+  },
+
   // Card History
   async getCardHistory(cardId) {
     const { data, error } = await supabase
