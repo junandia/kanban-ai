@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn';
 import { CardModal, AddColumnModal } from './Modal';
-import { Plus } from 'lucide-react';
+import { Plus, Download, FileJson, FileSpreadsheet } from 'lucide-react';
 import { api } from '../lib/supabase';
 
 export function KanbanBoard({ board }) {
@@ -181,6 +181,51 @@ export function KanbanBoard({ board }) {
     loadData();
   };
 
+  // Export functions
+  const exportJSON = () => {
+    const data = { 
+      board: { id: board.id, name: board.name, created_at: board.created_at }, 
+      columns: columns.map(col => ({
+        id: col.id,
+        title: col.title,
+        order: col.order,
+        color: col.color
+      })), 
+      cards: cards.map(c => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        priority: c.priority,
+        assignee: c.assignee,
+        column_id: c.column_id,
+        order: c.order
+      }))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kanban-${board.name || 'board'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCSV = () => {
+    const headers = 'Column,Title,Description,Priority,Assignee\n';
+    const rows = cards.map(c => {
+      const col = columns.find(col => col.id === c.column_id);
+      const escapeCsv = (str) => (str || '').replace(/"/g, '""');
+      return `"${escapeCsv(col?.title)}","${escapeCsv(c.title)}","${escapeCsv(c.description)}","${escapeCsv(c.priority || 'medium')}","${escapeCsv(c.assignee)}"`;
+    }).join('\n');
+    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kanban-${board.name || 'board'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="loading">
@@ -196,6 +241,23 @@ export function KanbanBoard({ board }) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
+      {/* Export Toolbar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: '0.5rem',
+        marginBottom: '1rem'
+      }}>
+        <button className="btn btn-secondary" onClick={exportJSON} title="Export board as JSON">
+          <FileJson size={16} style={{ marginRight: '0.5rem' }} />
+          Export JSON
+        </button>
+        <button className="btn btn-secondary" onClick={exportCSV} title="Export board as CSV">
+          <FileSpreadsheet size={16} style={{ marginRight: '0.5rem' }} />
+          Export CSV
+        </button>
+      </div>
+
       <div className="kanban-board">
         <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
           {columns.map(column => (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layout, Plus, Settings, Sparkles } from 'lucide-react';
+import { Layout, Plus, Settings, Sparkles, Moon, Sun } from 'lucide-react';
 import { api } from './lib/supabase';
 import { KanbanBoard } from './components/KanbanBoard';
 
@@ -9,10 +9,22 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showNewBoard, setShowNewBoard] = useState(false);
   const [newBoardName, setNewBoardName] = useState('');
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'dark';
+  });
 
   useEffect(() => {
     loadBoards();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
+  };
 
   const loadBoards = async () => {
     try {
@@ -98,6 +110,10 @@ function App() {
           
           <button className="btn btn-ghost btn-icon">
             <Settings size={18} />
+          </button>
+          
+          <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </header>
