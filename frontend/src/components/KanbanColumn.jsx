@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Plus, MoreHorizontal } from 'lucide-react';
 import { KanbanCard } from './KanbanCard';
 
-export function KanbanColumn({ column, cards, onAddCard, onCardClick }) {
+export function KanbanColumn({ column, cards, onAddCard, onCardClick, onCardHistory }) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id
   });
